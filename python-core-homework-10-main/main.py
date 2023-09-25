@@ -1,31 +1,60 @@
 from collections import UserDict
 import re
-
+from datetime import datetime, timedelta
 class Field:
-    def __init__(self, value):
-        self.value = value
-
+    def __init__(self, value=None):
+        self.__value = value
+    @property
+    def value(self):
+        return self.__value
+    @value.setter
+    def value(self, val):
+        self.__value = val
     def __str__(self):
-        return str(self.value)
+        return str(self.__value)
 
 class Name(Field):
     pass
 
 class Phone(Field):
-    def __init__(self, value):
-        if not re.match(r"^\d{10}$", str(value)):
+    def __init__(self, value=None):
+        self.__value = None
+        self.value = value
+
+    @property
+    def value(self):
+        return self.__value
+
+    @value.setter
+    def value(self, val):
+        if not re.match(r"^\d{10}$", str(val)):
             raise ValueError("Phone number should have 10 digits")
-        super().__init__(value)
+        self.__value = val
 
-    def __eq__(self, other):
-        if isinstance(other, Phone):
-            return self.value == other.value
-        return False
-
+class Birthday(Field):
+    @Field.value.setter
+    def value(self, val):
+        try:
+            datetime.strptime(val, "%d-%m-%Y")
+            self.__value = val
+        except ValueError:
+            raise ValueError("Birthday should be in format dd-mm-yyyy")
 class Record:
-    def __init__(self, name):
+    def __init__(self, name, birthday=None):
         self.name = Name(name)
+        self.birthday = Birthday(birthday)
         self.phones = []
+
+    def days_to_birthday(self):
+        if self.birthday.value:
+            today = datetime.today()
+            birth_date = datetime.strptime(self.birthday.value, "%d-%m-%Y")
+            next_birthday = datetime(today.year, birth_date.month, birth_date.day)
+            if today > next_birthday:
+                next_birthday = datetime(today.year + 1, birth_date.month, birth_date.day)
+            return (next_birthday - today).days
+        else:
+            raise ValueError("Birthday is not set!")
 
     def add_phone(self, phone_number):
         phone = Phone(phone_number)
@@ -56,6 +85,13 @@ class Record:
         return f"Contact name: {self.name.value}, phones: {'; '.join(p.value for p in self.phones)}"
 
 class AddressBook(UserDict):
+    def __iter__(self):
+        return iter(self.data.items())
+
+    def iterator(self, n):
+        items = list(self.data.items())
+        for i in range(0, len(items), n):
+            yield items[i:i + n]
 
     def add_record(self, record):
         if not isinstance(record, Record):
