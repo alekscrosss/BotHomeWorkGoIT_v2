@@ -1,6 +1,9 @@
 from collections import UserDict
 import re
-from datetime import datetime, timedelta
+from datetime import datetime
+import pickle
+
+
 class Field:
     def __init__(self, value=None):
         self.__value = value
@@ -104,3 +107,21 @@ class AddressBook(UserDict):
     def delete(self, name):
         if name in self.data:
             del self.data[name]
+
+    def save_to_file(self, filename):
+        with open(filename, 'wb') as file:
+            pickle.dump(dict(self.data), file)
+
+    def load_from_file(self, filename):
+        with open(filename, 'rb') as file:
+            self.data = pickle.load(file)
+
+    def search(self, query):
+        result = AddressBook()
+        pattern = re.compile(query, re.I)
+
+        for name, record in self.data.items():
+            if pattern.search(name) or any(pattern.search(phone.value) for phone in record.phones):
+                result[name] = record
+
+        return result
